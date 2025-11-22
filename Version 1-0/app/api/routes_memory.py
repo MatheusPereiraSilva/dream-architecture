@@ -3,7 +3,7 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from app.memory_service import MemoryService
-from dream.models import EpisodicUnit, EpisodeProposal
+from dream.models import EpisodeProposal
 
 router = APIRouter()
 

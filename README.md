@@ -1,11 +1,20 @@
-# DREAM Architecture
+# DREAM Architecture (v2.0)
 **D.R.E.A.M. — Dynamic Retention Episodic Architecture for Memory**
+
+[![Release](https://img.shields.io/badge/release-v2.0-blue.svg)](https://github.com/MatheusPereiraSilva/dream-architecture/releases)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Validation](https://img.shields.io/badge/status-Empirically%20Validated-success)](./evaluation)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17619917.svg)](https://doi.org/10.5281/zenodo.17619917)
 
 DREAM is an episodic memory design pattern for AI systems, created to address a core limitation of Large Language Models (LLMs):  
 their inability to maintain long-term, relevant, low-noise contextual memory without degrading performance.
 
+> **v2.0 Update:** This repository contains the reference implementation featuring the **Adaptive Retention Mechanism (ARM)** with Soft Delete (Tiered Storage) and mathematical validation of O(1) computational costs.
+
 📄 **Official Paper:**  
 https://doi.org/10.5281/zenodo.17619917
+
+Note: The linked paper refers to v1.0. The v2.0 addendum with empirical validation is currently available in this repository's `evaluation/` folder and will be published formally in 2026.
 
 ---
 
@@ -14,48 +23,74 @@ https://doi.org/10.5281/zenodo.17619917
 DREAM proposes a scalable, adaptive, user‑oriented memory architecture built on four pillars:
 
 ### **1. Episodic Units (EUs)**
-Compact memory units containing:
-- summary  
-- embedding vector  
-- topic (optional)  
-- importance score (optional)  
-- visits counter (reuse frequency)  
-- ttl (expiration time, managed by ARM)
+
+Compact memory units containing summary, embedding vector, topic, and lifecycle metadata. EUs serve as the atomic unit of long-term storage.
 
 ---
 
 ### **2. Opt‑in per Episode**
-Every episode is stored **only if explicitly confirmed** (user or system).  
-This eliminates:
-- noise  
-- irrelevant memories  
-- vector pollution  
-- long‑term drift and hallucination reinforcement  
+Every episode is stored **only if explicitly confirmed**. This eliminates noise, vector pollution, and hallucination reinforcement.  
 
 ---
 
-### **3. ARM — Adaptive Retention Mechanism**
-Inspired by human memory retention:
+### **3. ARM — Adaptive Retention Mechanism (Tiered Storage)**
+Inspired by human memory retention, ARM dynamically adjusts the Time-To-Live (TTL) based on engagement:
 
 ```
-TTL_days = min(MAX_DAYS, 7 * 2^visits)
+TTL_days = min(MAX_DAYS, 7 * (2 ** visits))
 ```
 
-Meaning:
-- Rarely used memories expire quickly  
-- Frequently reused memories gain longevity  
-- Vector storage stays clean and finite  
+- **Active Tier:** Frequently reused memories gain longevity. 
+- **Dormant Tier (Soft Delete):** Unused memories move to Cold Storage instead of immediate deletion, preserving user trust while saving compute costs. 
 
 ---
 
-### **4. Multi‑Orchestrator Sharding**
-Horizontal scalability strategy:
+### **4. Sharded Orchestration**
+Horizontal scalability strategy (`shard_id = hash(user_id) % N`) ensures user isolation and efficient distribution across orchestrators.
 
-```
-shard_id = hash(user_id) % N
-```
+---
+## 📊 Empirical Validation (New in v2.0)
+We proved via simulation that DREAM solves the "Infinite Log" problem. Check the `evaluation/` folder for the full Jupyter Notebooks.
 
-Each user always maps to the same shard → isolation, stability, and efficient distribution.
+| Computational Cost (Energy)                                                          | Storage Cost (Sustainability)                                                 |
+|--------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| ![Energy](img/EnergyCost.png)<br/>DREAM maintains O(1) cost vs O(n²) of Transformers | ![Storage](img/memory.png)<br/>ARM stabilizes storage growth via self-pruning |
+
+---
+
+## 🖼 Architecture Diagrams
+**Memory Read Flow**
+
+![Memory Read Flow](img/memory_read_flow.png)
+
+**Memory Write & Update Flow** 
+
+![Memory Write &Update Flow](img/memory_write.png)
+
+(Full high-resolution diagrams available in the paper)
+
+---
+
+## 🚀 Quick Start (DREAM-Lite)
+
+Run the simulation agent locally without any complex infrastructure:
+
+1. **Install dependencies:**
+```commandline
+pip install -r requirements.txt
+```
+2. **Run the demo:**
+```commandline
+python main.py
+```
+3. **Observe the ARM in action:** You will see logs demonstrating the Soft Delete and TTL
+**Renewal** process:
+```commandline
+[ORCH] ✅ Memory saved: 'User likes Python' (ID: a1b2c3d4)
+[ARM] 🔄 TTL renewed: +14 days (Revisit #1)
+[ARM] ❄️ TTL expired. Memory moved to Cold Storage.
+[ORCH] ⚠️ Memory was DORMANT. Reactivating...
+```
 
 ---
 
@@ -83,140 +118,77 @@ DREAM solves these through:
 
 ```
 dream-architecture/
-  dream/                      ← DOMAIN LAYER
-    models.py
-    interfaces.py
-    summarization.py
-    embedding.py
-    store.py
+   Version 1-0/    
+      dream/                      ← DOMAIN LAYER
+        models.py
+        interfaces.py
+        summarization.py
+        embedding.py
+        store.py
+        arm.py
+        orchestrator.py
+    
+      app/
+        config.py                 ← CONFIG LAYER
+        llm_clients.py            ← LLM ADAPTERS
+        vector_clients.py         ← VECTOR STORE ADAPTER
+        memory_service.py         ← APPLICATION LAYER
+        api/                      ← INTERFACE LAYER (FastAPI)
+         main.py
+         routes_memory.py 
+      __init__.py
+   
+  core/
+    __init__.py
     arm.py
     orchestrator.py
-
-  app/
-    config.py                 ← CONFIG LAYER
-    llm_clients.py            ← LLM ADAPTERS
-    vector_clients.py         ← VECTOR STORE ADAPTER
-    memory_service.py         ← APPLICATION LAYER
-
-    api/                      ← INTERFACE LAYER (FastAPI)
-      main.py
-      routes_memory.py
-
+    summarizer.py
+  evaluation/
+    ARM_simulation.py
+    energy_cost_simulation.py
+  memory/
+    __init__.py
+    episodic_db.py
+    retrieval.py
+    vector_db.py
+  models/
+    __init.py
+    episodic_unit.py
+  main.py
+  requirements.txt
+    
   examples/
     simple_demo.py            ← USAGE EXAMPLE
+  
+  dream_extensions/
+    arm_topic.py
+    retrieval_strategies.py
+    store_cassandra.py
+    store_pgvector.py
+    store_pinecone.py
+    store_qdrant.py
+  
+  docs/
+    extensions/
+      DREAM-as-a-Service/
+        DREAM+SupermemoryExplanation.md
+        dream_orchestratot.py
+        main.py
+        services.py
+      ARM_TopicAware.md
+      RetrievalStrategies.md
+      VectorStoreAdapters.md
 ```
-
----
-
-## 🧠 Domain Layer (Core)
-
-The `dream/` directory contains the pure implementation of the pattern:
-
-- EpisodicUnit  
-- MemoryEvent  
-- EpisodeProposal  
-- AdaptiveRetentionMechanism (ARM)  
-- DreamOrchestrator  
-- Summarizer / Embedder interfaces  
-- In‑memory VectorStore  
-- Sharding logic  
-
-This layer has **zero dependency** on external technologies.
-
----
-
-## ⚙️ Infrastructure (Adapters)
-
-The `app/` layer contains plug‑and‑replace adapters for:
-- LLM summarization  
-- LLM embeddings  
-- Vector store (in‑memory by default, compatible with pgvector, Pinecone, Milvus, Cassandra, etc.)
-
----
-
-## 🔧 Application Layer (Services)
-
-`MemoryService` contains the true use‑cases:
-
-- record interaction  
-- check if an episode should be proposed  
-- generate proposals (summary + embedding)  
-- confirm or discard episodes  
-- retrieve relevant context  
-- apply ARM on every reuse  
-
-This is the layer your AI agent or backend would interact with.
-
----
-
-## 🌐 REST API (FastAPI)
-
-Available endpoints:
-
-### `POST /memory/users/{id}/interactions`
-Record interaction into the episodic buffer.
-
-### `POST /memory/users/{id}/episodes/propose`
-Generate an episode proposal.
-
-### `POST /memory/users/{id}/episodes/confirm`
-Confirm or discard an episode (opt‑in).
-
-### `GET /memory/users/{id}/context?query=...`
-Retrieve relevant episodic units (semantic search + ARM).
-
----
-
-## 🖼 Conceptual Diagram (Text Representation)
-
-```
-User Interaction
-        ↓
-DreamOrchestrator (buffer)
-        ↓
-EpisodeProposal (summary + embedding)
-        ↓  User decision
-YES → EpisodicUnit stored
-NO  → Discarded
-        ↓ (retrieval)
-Relevant Episodes
-        ↓
-ARM.on_reuse → increases visits + extends TTL
-```
-
----
-
-## 🧪 Python Usage Example
-
-```python
-from app.memory_service import MemoryService
-
-svc = MemoryService()
-user = "user_123"
-
-svc.record_interaction(user, "I like RPG games.", "Nice!")
-svc.record_interaction(user, "I study AI.", "Great!")
-
-if svc.should_propose_episode(user):
-    prop = svc.build_episode_proposal(user, topic="Interests")
-    eu = svc.confirm_episode(prop, user_confirmed=True)
-
-ctx = svc.retrieve_context(user, query_text="AI and RPG")
-print(ctx)
-```
-
 ---
 
 ## ⭐ What Makes DREAM Unique
 
-- Saves **only meaningful** memories  
-- TTL based on real use  
-- User‑centric memory retention  
-- Avoids vector database pollution  
-- Horizontal scalability via sharding  
-- Plug‑and‑play architecture  
-- Explicit control over memory creation  
-- A new approach to context longevity  
+- **O(1) Inference Cost:** Decouples memory size from LLM context window.  
+- **Self-Pruning:** TTL based on real usage, not arbitrary dates.  
+- **Safety Net:** "Soft Delete" ensures users don't lose memories accidentally.  
+- **Privacy-First:** Explicit opt-in per episode.  
+- **Agnostic:** Compatible with any Vector DB (Chroma, Pinecone, pgvector) and LLM.  
+ 
 ---
 
 “DREAM supports any vector storage backend. Examples provided include pgvector, Qdrant, Pinecone, and Cassandra.
