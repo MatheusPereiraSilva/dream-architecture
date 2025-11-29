@@ -2,7 +2,6 @@
 **D.R.E.A.M. — Dynamic Retention Episodic Architecture for Memory**
 
 [![Release](https://img.shields.io/badge/release-v2.0-blue.svg)](https://github.com/MatheusPereiraSilva/dream-architecture/releases)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Validation](https://img.shields.io/badge/status-Empirically%20Validated-success)](./evaluation)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17619917.svg)](https://doi.org/10.5281/zenodo.17619917)
 
@@ -204,4 +203,5 @@ Ideas for new adapters, enhancements to ARM, or improved retrieval strategies ar
 
 ## 📜 License
 Creative Commons Attribution 4.0 International
+
 
